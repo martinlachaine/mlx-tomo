@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+results/
+.DS_Store
+*.dylib
+mlx_tomo/tuning_local.json

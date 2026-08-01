@@ -1,0 +1,51 @@
+name: Bug report
+description: Report incorrect results, a crash, or unexpected behavior.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. mlx-tomo runs on Apple silicon (Metal/MLX);
+        please include the details below so the issue can be reproduced.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? For accuracy issues, give the relative-L2 error against a reference and say which reference (TIGRE, an analytic phantom, or `mlx_tomo.ref`).
+      placeholder: |
+        Expected cone Ax to match mlx_tomo.ref to ~1e-5 at float32, but got relative L2 = 4e-2.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest self-contained snippet that shows the problem. It will be rendered as Python.
+      render: python
+      placeholder: |
+        import numpy as np, mlx_tomo as tigre
+        geo = tigre.geometry_default(high_resolution=False)
+        ...
+    validations:
+      required: true
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware and OS
+      placeholder: "Apple M2 Pro, macOS 15.4"
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of `pip show mlx-tomo mlx` (versions only is fine).
+      placeholder: "mlx-tomo 0.1.0, mlx 0.32.0, Python 3.13"
+    validations:
+      required: true
+  - type: textarea
+    id: geometry
+    attributes:
+      label: Geometry (if relevant)
+      description: The geometry object involved — `print(geo)` output is ideal.
+      render: text

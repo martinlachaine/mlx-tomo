@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Usage questions and examples
+    url: https://github.com/martinlachaine/mlx-tomo#quickstart
+    about: See the README quickstart and examples/quickstart.py before opening an issue.
+  - name: Differences from TIGRE
+    url: https://github.com/martinlachaine/mlx-tomo/blob/main/docs/compatibility.md
+    about: Supported operations and behavioral differences are documented in docs/compatibility.md.

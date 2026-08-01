@@ -1,0 +1,46 @@
+[project]
+name = "mlx-tomo"
+version = "0.1.0"
+description = "Parallel-, fan- and cone-beam X-ray projection and backprojection on Apple GPUs via Metal/MLX, with a TIGRE-compatible Python interface for supported operations"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "Martin Lachaine" }]
+keywords = [
+    "tomography", "ct", "cbct", "cone-beam", "projector", "backprojector",
+    "radon-transform", "drr", "fdk", "apple-silicon", "metal", "mlx", "tigre",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    # mlx pinned: the custom Metal kernels are validated against this version.
+    # Re-validate harness/run_tests.py before bumping.
+    "mlx==0.32.0",
+    "numpy>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "scipy>=1.14",   # reference filtering and diagnostics in the harness
+]
+
+[project.urls]
+Homepage = "https://github.com/martinlachaine/mlx-tomo"
+Repository = "https://github.com/martinlachaine/mlx-tomo"
+Issues = "https://github.com/martinlachaine/mlx-tomo/issues"
+Changelog = "https://github.com/martinlachaine/mlx-tomo/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["mlx_tomo"]

@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below, and also cite TIGRE as listed in NOTICE."
+title: "mlx-tomo: parallel-, fan- and cone-beam X-ray projection and backprojection on Apple GPUs via Metal/MLX"
+abstract: >-
+  Forward and backprojection operators for parallel-, fan- and cone-beam X-ray
+  tomography on Apple silicon GPUs via Metal/MLX, with a TIGRE-compatible Python
+  interface for supported operations. Provides Siddon and interpolated forward
+  projectors, FDK-weighted and matched backprojectors, projection along
+  arbitrary user-supplied rays for DRR generation, and FDK/FBP reconstruction.
+  Host-side geometry is computed in float64 with a float32 GPU pipeline,
+  validated against a float64 reference implementation and analytic phantoms.
+  Volumes and projection stacks beyond 2^31-1 elements are handled
+  transparently by slab and view splitting. Research software; not validated
+  for clinical or diagnostic use.
+type: software
+authors:
+  - family-names: Lachaine
+    given-names: Martin
+repository-code: "https://github.com/martinlachaine/mlx-tomo"
+url: "https://github.com/martinlachaine/mlx-tomo"
+license: BSD-3-Clause
+version: 0.1.0
+date-released: 2026-08-02
+keywords:
+  - tomography
+  - computed-tomography
+  - cone-beam
+  - projector
+  - radon-transform
+  - drr
+  - apple-silicon
+  - metal
+  - mlx

@@ -1,0 +1,41 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    # Apple silicon runner — mlx-tomo requires Metal/MLX (arm64).
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the runner is Apple silicon
+        run: |
+          arch=$(uname -m)
+          echo "runner arch: $arch"
+          if [ "$arch" != "arm64" ]; then
+            echo "::error::mlx-tomo requires an arm64 (Apple silicon) runner; got $arch"
+            exit 1
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Create venv and install (with dev extras)
+        run: |
+          uv venv --python ${{ matrix.python-version }} .venv
+          uv pip install -p .venv/bin/python -e ".[dev]"
+
+      - name: Build the optional texture bridge
+        run: cd texture_bridge && ./build.sh
+
+      - name: Run correctness suite
+        run: .venv/bin/python harness/run_tests.py
