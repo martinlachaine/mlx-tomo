@@ -29,9 +29,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          # dependencies are declared in pyproject.toml; there is no lockfile,
-          # so key the cache on it rather than letting the default glob miss.
-          cache-dependency-glob: "pyproject.toml"
+          # Caching is off deliberately. Dependency install is a small fraction
+          # of a run that is dominated by the correctness suite, and the cache
+          # save step emits a reservation-conflict warning on every matrix run.
+          enable-cache: false
 
       - name: Create venv and install (with dev extras)
         run: |
