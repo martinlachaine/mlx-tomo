@@ -15,7 +15,7 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Verify the runner is Apple silicon
         run: |
@@ -27,7 +27,11 @@ jobs:
           fi
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
+        with:
+          # dependencies are declared in pyproject.toml; there is no lockfile,
+          # so key the cache on it rather than letting the default glob miss.
+          cache-dependency-glob: "pyproject.toml"
 
       - name: Create venv and install (with dev extras)
         run: |
