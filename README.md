@@ -4,6 +4,7 @@ GPU-accelerated X-ray projection and backprojection for Apple silicon.
 
 [![tests](https://github.com/martinlachaine/mlx-tomo/actions/workflows/ci.yml/badge.svg)](https://github.com/martinlachaine/mlx-tomo/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/mlx-tomo.svg)](https://pypi.org/project/mlx-tomo/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21754679.svg)](https://doi.org/10.5281/zenodo.21754679)
 [![License: BSD 3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://github.com/martinlachaine/mlx-tomo/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/martinlachaine/mlx-tomo/blob/main/pyproject.toml)
 [![Platform](https://img.shields.io/badge/platform-Apple%20silicon-lightgrey.svg)](#requirements-and-installation)
@@ -167,5 +168,8 @@ releases.
 
 BSD-3-Clause; see [LICENSE](https://github.com/martinlachaine/mlx-tomo/blob/main/LICENSE). mlx-tomo adopts TIGRE's geometry
 conventions and was validated against TIGRE; see [NOTICE](https://github.com/martinlachaine/mlx-tomo/blob/main/NOTICE) for
-attribution and the TIGRE paper to cite, and [CITATION.cff](https://github.com/martinlachaine/mlx-tomo/blob/main/CITATION.cff) to
-cite mlx-tomo itself.
+attribution and the TIGRE paper to cite, and
+[CITATION.cff](https://github.com/martinlachaine/mlx-tomo/blob/main/CITATION.cff)
+to cite mlx-tomo itself. The concept DOI
+[10.5281/zenodo.21754679](https://doi.org/10.5281/zenodo.21754679) always resolves to the latest
+release.

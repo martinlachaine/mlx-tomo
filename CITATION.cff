@@ -18,6 +18,11 @@ authors:
     given-names: Martin
 repository-code: "https://github.com/martinlachaine/mlx-tomo"
 url: "https://github.com/martinlachaine/mlx-tomo"
+doi: 10.5281/zenodo.21754679
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.21754679
+    description: Concept DOI — always resolves to the latest release.
 license: BSD-3-Clause
 version: 0.1.0
 date-released: 2026-08-02
