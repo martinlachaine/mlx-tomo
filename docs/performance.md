@@ -15,8 +15,8 @@ Timings come from `harness/bench_ax.py`, `harness/bench_atb.py`, and
 - Wall-clock time for the whole projection stack, divided by the number of views.
 - Volumes are float32 unless the table says otherwise; the phantom is the
   ellipsoid phantom in `harness/gen.py`.
-- `harness/tune.py` was run first, so kernel launch parameters are the local
-  measurements rather than the shipped defaults.
+- The M5 Max run used launch parameters measured with `harness/tune.py`; the
+  M1 run below used the shipped defaults.
 
 All three scripts print the machine identifier and MLX version they ran under,
 and write structured JSON results to `results/`. The texture benchmark reports
@@ -74,24 +74,56 @@ fell from 7.49 to 3.92 ms/view for float32 and from 4.58 to 2.58 ms/view for
 float16. Sampler throughput differs across GPU generations, so applications
 should benchmark both backends on their target machine.
 
-### Earlier measurements on an Apple M1
+### Apple M1 reference run (2026-09-24)
 
-These were taken with an earlier version of the benchmark that reported the
-**fastest of three** repetitions rather than a median, so they are not directly
-comparable with the table above and are somewhat optimistic. They are retained
-because the M1-to-M5 comparison is informative.
+Mac mini (`Macmini9,1`), Apple M1 with an 8-core GPU and 16 GB unified memory;
+macOS 27.0 (build 26A428), Python 3.13.9, MLX 0.32.0. Git commit
+`e2477373d521c536cc6901e0c39ba5bc1f1f6f9e`. These are the complete
+non-quick benchmark sweeps using the shipped launch defaults. Projection values
+are milliseconds per view, shown as nine-run median `[minimum–maximum]`.
+The unrounded results are in [forward projection](benchmark-data/m1-2026-09-24/bench_ax.json),
+[backprojection](benchmark-data/m1-2026-09-24/bench_atb.json), and
+[texture comparison](benchmark-data/m1-2026-09-24/bench_texture.json).
 
-Apple M1, 8-core GPU, 16 GB unified memory; measured sustained read+write
-bandwidth approximately 50 GB/s.
+| problem | views | interpolated | Siddon |
+|---|---:|---:|---:|
+| 256³ → 256² | 1 | 8.55 `[7.15–9.77]` | 4.22 `[3.55–6.55]` |
+| 256³ → 256² | 100 | 5.97 `[5.89–6.78]` | 1.93 `[1.87–1.96]` |
+| 512³ → 512² | 1 | 64.09 `[61.63–66.19]` | 36.85 `[33.89–39.66]` |
+| 512³ → 512² | 100 | 50.89 `[50.51–52.60]` | 17.65 `[17.33–18.57]` |
+| 512³ → 768² | 10 | 62.83 `[61.97–68.51]` | — |
 
-| problem | views | interpolated | Siddon | Atb (FDK) |
-|---|---|---|---|---|
-| 256³ ↔ 256² | 100 | 6.1 | 2.6 | 2.3 |
-| 512³ ↔ 512² | 100 | 48.2 | 16.6 | 17.6 |
+| backprojection | views | FDK | matched |
+|---|---:|---:|---:|
+| 256³ ← 256² | 100 | 2.50 `[2.45–2.83]` | 2.89 `[2.84–2.93]` |
+| 512³ ← 512² | 100 | 19.27 `[19.10–20.28]` | — |
+| 512³ ← 512² | 360 | 23.71 `[23.19–24.23]` | — |
 
-Throughput across the two machines tracks measured memory bandwidth more closely
-than GPU core count. Observed scaling is consistent with bandwidth-bound
-execution, though no roofline analysis has been performed.
+The texture table uses the same output-residency definitions as the M5 table:
+the buffer GPU output remains on the GPU, while buffer host and texture host
+return NumPy arrays. Projection columns are milliseconds per view. Upload is
+the one-time `TextureProjector` construction after shader compilation, measured
+once per case in milliseconds; it is **not** a nine-run median.
+
+| problem | views | dtype | buffer GPU | buffer host | texture host | upload |
+|---|---:|---|---:|---:|---:|---:|
+| 256³ → 256² | 100 | float32 | 6.65 `[6.35–7.74]` | 6.86 `[6.50–7.08]` | 4.10 `[3.94–4.32]` | 5.9 ms |
+| 512³ → 512² | 1 | float32 | 69.45 `[58.57–80.88]` | 74.49 `[61.41–81.81]` | 32.94 `[28.49–33.37]` | 53.3 ms |
+| 512³ → 512² | 100 | float32 | 63.52 `[62.91–73.46]` | 62.87 `[52.39–63.79]` | 33.03 `[32.75–35.00]` | 54.7 ms |
+| 512³ → 512² | 100 | float16 | 46.15 `[44.94–47.49]` | 45.96 `[44.14–54.57]` | 28.33 `[28.20–28.64]` | 30.2 ms |
+
+The M1 texture-host median is 1.90× faster than buffer host on the
+512³/100-view float32 case. The full correctness suite passed 8/8 test files
+with the repository root on `PYTHONPATH`, including odd-sized texture volumes.
+A separate tail-only multi-chunk texture upload check on a 513×2048×17 volume
+used two chunks and had relative L2 error 0.
+
+The 512³ FDK timing varied with run order. A separate reverse-order nine-run
+check measured 23.51 `[23.47–23.64]` ms/view at 360 views, followed by
+23.08 `[22.91–23.35]` at 100 views. The original 100-view row was 19.27
+ms/view, so the gap between the original 100- and 360-view rows does not by
+itself establish a view-count-specific bottleneck. macOS recorded no thermal
+or performance warnings during these runs.
 
 ### Large-volume measurement
 
