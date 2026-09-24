@@ -112,9 +112,14 @@ once per case in milliseconds; it is **not** a nine-run median.
 | 512³ → 512² | 100 | float32 | 63.52 `[62.91–73.46]` | 62.87 `[52.39–63.79]` | 33.03 `[32.75–35.00]` | 54.7 ms |
 | 512³ → 512² | 100 | float16 | 46.15 `[44.94–47.49]` | 45.96 `[44.14–54.57]` | 28.33 `[28.20–28.64]` | 30.2 ms |
 
-The M1 texture-host median is 1.90× faster than buffer host on the
-512³/100-view float32 case. The full correctness suite passed 8/8 test files
-with the repository root on `PYTHONPATH`, including odd-sized texture volumes.
+The M1 texture-host median is 1.90× as fast as buffer host (47.5% lower
+projection latency) on the 512³/100-view float32 case. Including the separately
+measured upload gives approximately 1.87× end-to-end throughput for that run.
+For a one-off single-view projection, however, upload cost makes the texture
+path slower; the advantage appears once a volume is reused or projected over
+multiple views. Upload was measured only once, so this break-even observation
+is approximate. The full correctness suite passed 8/8 test files, including
+odd-sized texture volumes.
 A separate tail-only multi-chunk texture upload check on a 513×2048×17 volume
 used two chunks and had relative L2 error 0.
 

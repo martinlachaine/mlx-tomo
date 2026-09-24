@@ -11,16 +11,22 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 
 
 def main():
     tests = sorted(glob.glob(os.path.join(HERE, "test_*.py")))
+    env = os.environ.copy()
+    # Test the checkout that contains this runner, even when another mlx-tomo
+    # installation is present or the editable-install metadata is stale.
+    env["PYTHONPATH"] = os.pathsep.join(
+        part for part in (ROOT, env.get("PYTHONPATH")) if part)
     results = []
     for t in tests:
         name = os.path.basename(t)
         t0 = time.time()
         p = subprocess.run([sys.executable, t], capture_output=True, text=True,
-                           cwd=os.path.join(HERE, ".."))
+                           cwd=ROOT, env=env)
         dt = time.time() - t0
         out = p.stdout.strip().splitlines()
         last = out[-1] if out else ""

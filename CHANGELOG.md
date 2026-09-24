@@ -16,6 +16,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The texture benchmark now reports nine-run medians, distinguishes GPU- and
   host-resident buffer output, excludes shader compilation from upload timing,
   and writes structured JSON results.
+- The validation runner now ensures subprocesses import the current checkout,
+  rather than relying on the caller to set `PYTHONPATH` correctly.
 
 ## [0.1.0] — 2026-08-02
 
