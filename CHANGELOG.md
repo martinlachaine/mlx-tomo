@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The optional hardware-texture projector now uploads volumes into GPU-private,
+  tiled texture storage. Page- and row-aligned volumes use a zero-copy blit;
+  other layouts use a z-chunked staging buffer capped at 256 MiB. On the tested
+  M5 Max this reduced 512³ float32 projection time from 7.49 to 3.92 ms/view and
+  float16 from 4.58 to 2.58 ms/view over 100 views.
+- The texture benchmark now reports nine-run medians, distinguishes GPU- and
+  host-resident buffer output, excludes shader compilation from upload timing,
+  and writes structured JSON results.
+
 ## [0.1.0] — 2026-08-02
 
 Initial public release of mlx-tomo. The API is usable but may evolve during the

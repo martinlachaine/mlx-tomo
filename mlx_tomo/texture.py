@@ -7,10 +7,11 @@ normalized coordinate (j + 0.5)/N, zero outside (clamp_to_zero == CUDA
 border). Measured accuracy on an Apple M1: relative L2 error of approximately 6e-5
 against the float64 reference, close to the buffer backend's float32 floor.
 
-Measured on an Apple M1 relative to the buffer backend: approximately 1.3x
-lower single-view latency, approximately 1.3x faster with float16 volumes,
-and roughly at parity for float32 many-view batches. These ratios depend on
-texture-unit count and filtering rate and will differ on other GPUs.
+The volume is uploaded once into GPU-private, tiled texture storage. Uploads
+use a zero-copy blit when the input layout permits and a bounded staging buffer
+otherwise. Sampler throughput varies by GPU generation; benchmark both this
+backend and the buffer backend for the target machine and workload. See
+docs/performance.md for current measured results.
 
 Primary API is the plan: upload the volume once, project many times.
 

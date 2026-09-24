@@ -2,8 +2,8 @@
 
 ## Methodology
 
-Timings come from `harness/bench_ax.py` and `harness/bench_atb.py`, which measure
-as follows:
+Timings come from `harness/bench_ax.py`, `harness/bench_atb.py`, and
+`harness/bench_texture.py`, which measure as follows:
 
 - One untimed warm-up call, which compiles the Metal kernel and allocates memory
   pools.
@@ -13,40 +13,66 @@ as follows:
 - **The reported figure is the median of the nine repetitions**, with the
   observed minimum and maximum also printed so run-to-run spread is visible.
 - Wall-clock time for the whole projection stack, divided by the number of views.
-- Volumes are float32; the phantom is the ellipsoid phantom in `harness/gen.py`.
+- Volumes are float32 unless the table says otherwise; the phantom is the
+  ellipsoid phantom in `harness/gen.py`.
 - `harness/tune.py` was run first, so kernel launch parameters are the local
   measurements rather than the shipped defaults.
 
-Both scripts print the machine identifier and MLX version they ran under, and
-write results to `results/`.
+All three scripts print the machine identifier and MLX version they ran under,
+and write structured JSON results to `results/`. The texture benchmark reports
+the buffer backend both with its output left GPU-resident and with a host numpy
+result; comparisons with the texture backend use the latter because texture
+results currently land in host memory.
 
 ## Measured throughput
 
 Milliseconds per view, median of nine repetitions.
 
-**Apple M5 Max** — 40-core GPU, 128 GB unified memory, macOS 26.5.1 (build
-25F80), Python 3.14.6, MLX 0.32.0, mains power, no other GPU load. Measured
-sustained read+write bandwidth approximately 500 GB/s.
+**Apple M5 Max** — 40-core GPU, 128 GB unified memory, macOS 27.0 (build
+26A428), Python 3.14.7, MLX 0.32.0, mains power, no thermal or performance
+warnings. Measured sustained read+write bandwidth 517 GB/s. The benchmark used
+commit `e7416da` plus the unreleased private-texture change described below.
 
 | problem | views | interpolated | Siddon |
 |---|---|---|---|
-| 256³ → 256² | 1 | 1.17 `[1.02–2.45]` | 0.59 `[0.51–1.05]` |
-| 256³ → 256² | 100 | 0.28 `[0.27–0.29]` | 0.15 `[0.15–0.16]` |
-| 512³ → 512² | 1 | 3.14 `[2.99–4.43]` | 1.78 `[1.53–4.10]` |
-| 512³ → 512² | 100 | 2.08 `[2.06–2.10]` | 0.98 `[0.97–0.99]` |
-| 512³ → 768² | 10 | 3.84 `[3.77–4.00]` | — |
+| 256³ → 256² | 1 | 2.20 `[2.09–2.56]` | 0.92 `[0.87–1.34]` |
+| 256³ → 256² | 100 | 0.26 `[0.26–0.26]` | 0.14 `[0.14–0.15]` |
+| 512³ → 512² | 1 | 3.03 `[2.93–6.34]` | 2.19 `[1.56–6.08]` |
+| 512³ → 512² | 100 | 1.90 `[1.88–1.94]` | 0.90 `[0.90–0.91]` |
+| 512³ → 768² | 10 | 3.55 `[3.54–3.59]` | — |
 
 | backprojection | views | FDK | matched |
 |---|---|---|---|
-| 256³ ← 256² | 100 | 0.23 `[0.23–0.25]` | 0.27 `[0.26–0.27]` |
-| 512³ ← 512² | 100 | 1.67 `[1.67–1.76]` | — |
-| 512³ ← 512² | 360 | 1.72 `[1.71–1.73]` | — |
+| 256³ ← 256² | 100 | 0.23 `[0.22–0.24]` | 0.26 `[0.25–0.26]` |
+| 512³ ← 512² | 100 | 1.61 `[1.61–1.71]` | — |
+| 512³ ← 512² | 360 | 1.62 `[1.62–1.64]` | — |
 
 Peak GPU memory across the whole forward sweep was 0.70 GiB, set by its largest
 case (a 512³ volume with a 768² detector).
 
 Single-view rows carry noticeably wider spread than 100-view rows, because
 fixed per-call overhead is amortized over one view instead of a hundred.
+
+### Hardware-texture backend
+
+The optional texture backend stores the volume in a GPU-private 3D texture and
+returns projections in host numpy memory. The directly comparable buffer column
+therefore also includes conversion to host numpy. Upload time is measured after
+the Metal pipeline has been compiled and is paid once per `TextureProjector`.
+
+| problem | views | dtype | buffer GPU | buffer host | texture host | upload |
+|---|---:|---|---:|---:|---:|---:|
+| 256³ → 256² | 100 | float32 | 0.26 | 0.27 | 0.42 | 2.8 ms |
+| 512³ → 512² | 1 | float32 | 2.99 | 2.97 | 3.54 | 18.6 ms |
+| 512³ → 512² | 100 | float32 | 1.92 | 1.94 | 3.92 | 24.3 ms |
+| 512³ → 512² | 100 | float16 | 2.01 | 2.02 | 2.58 | 12.4 ms |
+
+Projection columns are milliseconds per view. On this M5 Max the private
+texture is not faster than the buffer kernel, but private tiled storage is a
+substantial improvement over the former shared texture: the 512³/100-view time
+fell from 7.49 to 3.92 ms/view for float32 and from 4.58 to 2.58 ms/view for
+float16. Sampler throughput differs across GPU generations, so applications
+should benchmark both backends on their target machine.
 
 ### Earlier measurements on an Apple M1
 

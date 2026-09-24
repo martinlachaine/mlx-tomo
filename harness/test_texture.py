@@ -72,6 +72,26 @@ def main():
     check("texture float16", err16 < 5e-3, f"rel_l2={err16:.2e}")
     plan16.close()
 
+    # Odd dimensions force the bridge's padded-row, bounded-staging upload
+    # path (the normal power-of-two cases use a page-aligned zero-copy blit).
+    # Cover both texture formats because their row strides differ.
+    odd = mlx_tomo.geometry_default(high_resolution=False)
+    odd.nVoxel = np.array([17, 19, 21])
+    odd.dVoxel = odd.sVoxel / odd.nVoxel
+    odd.nDetector = np.array([23, 25])
+    odd.dDetector = odd.sDetector / odd.nDetector
+    odd_vol = ellipsoid_phantom(odd, default_phantom_mm(odd)).astype(np.float32)
+    odd_angles = angles[:2]
+    odd_buf = mlx_tomo.Ax(
+        odd_vol, odd, odd_angles, projection_type="interpolated")
+    for dtype in (np.float32, np.float16):
+        odd_plan = mlx_tomo.TextureProjector(odd_vol.astype(dtype), odd)
+        odd_tex = odd_plan.project(odd_angles)
+        odd_plan.close()
+        odd_err = rel_l2(odd_tex, odd_buf)
+        check(f"odd-dimension upload {np.dtype(dtype).name}",
+              odd_err < 5e-3, f"rel_l2={odd_err:.2e}")
+
     # Guard-rail regressions (each previously killed the process or
     # silently returned wrong data):
     plan = mlx_tomo.TextureProjector(vol, geo)

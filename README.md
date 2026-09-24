@@ -130,13 +130,13 @@ Full detail and how to run everything: [docs/validation.md](https://github.com/m
 ## Performance
 
 Milliseconds per view, median of nine timed repetitions after a warm-up, on an
-Apple M5 Max (40-core GPU, 128 GB, macOS 26.5.1, Python 3.14.6, MLX 0.32.0,
-mains power, no other GPU load):
+Apple M5 Max (40-core GPU, 128 GB, macOS 27.0, Python 3.14.7, MLX 0.32.0,
+mains power, no thermal or performance warnings):
 
 | problem | views | interpolated | Siddon | Atb (FDK) |
 |---|---|---|---|---|
-| 256³ ↔ 256² | 100 | 0.28 | 0.15 | 0.23 |
-| 512³ ↔ 512² | 100 | 2.08 | 0.98 | 1.67 |
+| 256³ ↔ 256² | 100 | 0.26 | 0.14 | 0.23 |
+| 512³ ↔ 512² | 100 | 1.90 | 0.90 | 1.61 |
 
 Observed scaling across machines is consistent with bandwidth-bound execution.
 Kernel launch parameters are measured per device; run `harness/tune.py` on your

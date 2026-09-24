@@ -86,10 +86,18 @@ requires a small C-ABI dylib built from `texture_bridge/`, loaded at runtime by
 `mlx_tomo/texture.py`. `texture_available()` reports whether it loaded, and the
 buffer path is used if it did not.
 
+The volume is held in GPU-private texture storage so Metal can use a tiled
+sampler-friendly layout. Plan construction uploads page- and row-aligned numpy
+storage with a zero-copy buffer-to-texture blit. Other layouts use padded rows
+and a staging buffer capped at 256 MiB; large uploads are split along z to keep
+the transient memory bound independent of volume depth.
+
 Two constraints: Metal caps textures at 2048 elements per axis, and
 `Ax(..., backend="texture")` builds its plan on each call, so the volume upload
 cost is included in every call. For repeated projection of the same volume,
-construct a `TextureProjector` once and reuse it.
+construct a `TextureProjector` once and reuse it. Texture and buffer throughput
+vary by GPU generation, so choose the backend from measurements on the target
+machine rather than assuming the hardware sampler is faster.
 
 ## Per-device tuning
 

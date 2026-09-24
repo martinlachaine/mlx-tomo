@@ -1,5 +1,6 @@
 """Backprojection throughput. Usage: python harness/bench_atb.py [--quick]"""
 
+import json
 import os
 import sys
 import time
@@ -42,13 +43,26 @@ def bench(nvox, ndet, nviews, bptype, reps=9):
     print(f"{nvox}^3 <- {ndet}^2 x{nviews:4d} {bptype:8s}: "
           f"{med/nviews*1e3:7.2f} ms/view median "
           f"[{lo/nviews*1e3:.2f}-{hi/nviews*1e3:.2f}] over {reps} reps")
-    return med, lo, hi
+    return {
+        "nvox": nvox, "ndet": ndet, "nviews": nviews,
+        "bptype": bptype, "median_s": med, "min_s": lo, "max_s": hi,
+        "ms_per_view": med / nviews * 1e3, "reps": reps,
+    }
 
 
 if __name__ == "__main__":
     print(f"machine: {machine()}  mlx {mx.__version__}")
-    bench(256, 256, 100, "FDK")
+    rows = [bench(256, 256, 100, "FDK")]
     if "--quick" not in sys.argv:
-        bench(256, 256, 100, "matched")
-        bench(512, 512, 100, "FDK")
-        bench(512, 512, 360, "FDK")
+        rows.extend([
+            bench(256, 256, 100, "matched"),
+            bench(512, 512, 100, "FDK"),
+            bench(512, 512, 360, "FDK"),
+        ])
+    os.makedirs(os.path.join(os.path.dirname(__file__), "..", "results"),
+                exist_ok=True)
+    out = os.path.join(os.path.dirname(__file__), "..", "results",
+                       "bench_atb.json")
+    with open(out, "w") as f:
+        json.dump({"machine": machine(), "mlx": mx.__version__, "rows": rows},
+                  f, indent=1)

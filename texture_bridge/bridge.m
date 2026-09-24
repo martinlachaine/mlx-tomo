@@ -67,8 +67,12 @@ void *mcb_compile(const char *src, const char *fn) {
     }
 }
 
-// Create an r32Float/r16Float 3D texture and upload `data` (C-order
-// [z][y][x], x fastest). Returns a retained MTLTexture*.
+// Create a GPU-private r32Float/r16Float 3D texture and upload `data`
+// (C-order [z][y][x], x fastest). Private storage gives Metal freedom to
+// use the tiled texture layout preferred by the hardware sampler. Page-
+// aligned, row-aligned inputs are wrapped without a CPU copy; other layouts
+// use a bounded shared staging buffer and padded rows for the blit encoder.
+// Returns a retained MTLTexture*.
 void *mcb_texture3d(const void *data, int nx, int ny, int nz, int half) {
     if (mcb_init() != 0) return NULL;
     if (!data || nx < 1 || ny < 1 || nz < 1) {
@@ -83,17 +87,107 @@ void *mcb_texture3d(const void *data, int nx, int ny, int nz, int half) {
         td.height = (NSUInteger)ny;
         td.depth = (NSUInteger)nz;
         td.usage = MTLTextureUsageShaderRead;
-        td.storageMode = MTLStorageModeShared;
+        td.storageMode = MTLStorageModePrivate;
         id<MTLTexture> tex = [g_dev newTextureWithDescriptor:td];
         if (!tex) { set_err(@"texture allocation failed"); return NULL; }
+
         NSUInteger esz = half ? 2 : 4;
-        MTLRegion region = MTLRegionMake3D(0, 0, 0, nx, ny, nz);
-        [tex replaceRegion:region
-               mipmapLevel:0
-                     slice:0
-                 withBytes:data
-               bytesPerRow:(NSUInteger)nx * esz
-             bytesPerImage:(NSUInteger)nx * (NSUInteger)ny * esz];
+        NSUInteger srcRow = (NSUInteger)nx * esz;
+        NSUInteger srcImage = srcRow * (NSUInteger)ny;
+        NSUInteger srcBytes = srcImage * (NSUInteger)nz;
+        NSUInteger page = (NSUInteger)getpagesize();
+
+        // A buffer-to-texture blit requires 256-byte row alignment. For the
+        // common power-of-two volumes numpy also supplies a page-aligned base,
+        // so Metal can wrap the caller's storage for the synchronous upload.
+        id<MTLBuffer> direct = nil;
+        if (((uintptr_t)data % page) == 0 && (srcBytes % page) == 0 &&
+            (srcRow % 256u) == 0) {
+            @try {
+                direct = [g_dev newBufferWithBytesNoCopy:(void *)data
+                                                   length:srcBytes
+                                                  options:MTLResourceStorageModeShared |
+                                                          MTLResourceHazardTrackingModeUntracked
+                                              deallocator:nil];
+            } @catch (NSException *e) {
+                direct = nil;
+            }
+        }
+
+        if (direct) {
+            id<MTLCommandBuffer> cb = [g_queue commandBuffer];
+            id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
+            [blit copyFromBuffer:direct
+                    sourceOffset:0
+               sourceBytesPerRow:srcRow
+             sourceBytesPerImage:srcImage
+                      sourceSize:MTLSizeMake(nx, ny, nz)
+                       toTexture:tex
+                destinationSlice:0
+                destinationLevel:0
+               destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blit endEncoding];
+            [cb commit];
+            [cb waitUntilCompleted];
+            if (cb.error) {
+                set_err([NSString stringWithFormat:@"texture upload failed: %@",
+                                                   cb.error]);
+                return NULL;
+            }
+        } else {
+            // Bound fallback staging to 256 MiB. This matters for large or
+            // oddly-sized volumes where a full padded copy could otherwise
+            // double plan-construction memory.
+            NSUInteger stageRow = (srcRow + 255u) & ~255u;
+            NSUInteger stageImage = stageRow * (NSUInteger)ny;
+            const NSUInteger maxStage = 256u * 1024u * 1024u;
+            NSUInteger layers = MAX((NSUInteger)1, maxStage / stageImage);
+            layers = MIN(layers, (NSUInteger)nz);
+            id<MTLBuffer> staging =
+                [g_dev newBufferWithLength:stageImage * layers
+                                   options:MTLResourceStorageModeShared];
+            if (!staging) {
+                set_err(@"texture staging allocation failed");
+                return NULL;
+            }
+            const unsigned char *src = (const unsigned char *)data;
+            for (NSUInteger z0 = 0; z0 < (NSUInteger)nz; z0 += layers) {
+                NSUInteger depth = MIN(layers, (NSUInteger)nz - z0);
+                unsigned char *dst = (unsigned char *)staging.contents;
+                if (stageRow == srcRow) {
+                    memcpy(dst, src + z0 * srcImage, depth * srcImage);
+                } else {
+                    for (NSUInteger z = 0; z < depth; ++z) {
+                        for (NSUInteger y = 0; y < (NSUInteger)ny; ++y) {
+                            memcpy(dst + z * stageImage + y * stageRow,
+                                   src + (z0 + z) * srcImage + y * srcRow,
+                                   srcRow);
+                        }
+                    }
+                }
+
+                id<MTLCommandBuffer> cb = [g_queue commandBuffer];
+                id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
+                [blit copyFromBuffer:staging
+                        sourceOffset:0
+                   sourceBytesPerRow:stageRow
+                 sourceBytesPerImage:stageImage
+                          sourceSize:MTLSizeMake(nx, ny, depth)
+                           toTexture:tex
+                    destinationSlice:0
+                    destinationLevel:0
+                   destinationOrigin:MTLOriginMake(0, 0, z0)];
+                [blit endEncoding];
+                [cb commit];
+                [cb waitUntilCompleted];
+                if (cb.error) {
+                    set_err([NSString stringWithFormat:
+                        @"texture upload failed at z=%lu: %@",
+                        (unsigned long)z0, cb.error]);
+                    return NULL;
+                }
+            }
+        }
         return (void *)CFBridgingRetain(tex);
     } @catch (NSException *e) {
         set_err([NSString stringWithFormat:@"texture creation threw: %@", e]);
