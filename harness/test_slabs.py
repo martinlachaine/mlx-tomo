@@ -12,7 +12,7 @@ sizes (the real 2^31-1 threshold needs volumes > 8 GiB). Expectations:
   Siddon additionally recomputes the slab-entry ray parameter per slab
   (fresh division vs the unsplit kernel's accumulated plane stepping),
   which perturbs the two cut-plane cells' segment lengths by ~1 ulp of
-  the ray parameter — seam noise well under 1e-5, still far below any
+  the ray parameter, seam noise well under 1e-5, still far below any
   real counting bug (one dropped/doubled cell would show ~1e-4 here).
 - An impulse sitting exactly on a cut layer is the sharpest double-count
   probe: its full projection lives in the taps of two adjacent slabs.
@@ -232,8 +232,8 @@ def test_degenerate_ray_hugging_cut_plane():
     their low-weight taps (regression for the sign-blind degenerate-
     slope clip; the pre-fix kernel loses most of the lower slab's
     contribution for such rays). The lower-slab partial is compared to
-    the same data zero-padded to the full volume and projected unsplit —
-    identical owed taps, no cut plane, so any clip defect is a
+    the same data zero-padded to the full volume and projected unsplit
+    (identical owed taps and no cut plane), so any clip defect is a
     large RELATIVE error on the probe row's (epsilon-sized) partial."""
     cut = 8
     geo = mlx_tomo.geometry(mode="parallel", nVoxel=np.array([16, 64, 64]))

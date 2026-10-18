@@ -11,8 +11,8 @@ them. Those results are passed to the GPU as float32, and the projection and
 backprojection kernels run entirely in float32.
 
 Apple GPUs have no native double precision, so this split keeps the
-precision-sensitive part — coordinate setup, where a small angular error
-displaces a ray across the whole volume — in double precision, while the
+precision-sensitive part, coordinate setup, where a small angular error
+displaces a ray across the whole volume, in double precision, while the
 accumulation runs at the width the hardware supports. Accuracy is bounded by the
 float32 accumulation, which is what the reference comparison in
 [validation.md](validation.md) measures.
@@ -44,6 +44,11 @@ Two kernels, selected by `projection_type`:
 `interpolated` is the usual choice; `Siddon` is exact for piecewise-constant
 volumes and is used in the analytic comparisons.
 
+The interpolated kernel keeps the eight corners of the current cell in
+registers and reloads them only when a sample enters a new cell. With the
+default half-voxel step most consecutive samples share a cell, and the sums
+are identical to loading the corners at every sample.
+
 ## Backprojectors
 
 Both are voxel-driven: each output voxel gathers from the projections. Two cone
@@ -55,8 +60,16 @@ weights are available:
   interpolated forward projector. See [validation.md](validation.md) for how
   close the approximation is.
 
+For circular trajectories with an unrotated detector the FDK distance weight
+is derived from the reciprocal already computed for the perspective divide,
+so each voxel and view costs one division instead of two; other trajectories
+keep the general expression. Both backprojection kernels compile with Metal's
+relaxed math mode, which agrees with the safe build to within 1e-7 and is
+measurably faster; the projectors gain nothing from it and keep the safe mode
+for their floor and clipping arithmetic.
+
 In the cone-beam cosine weight, detector coordinates are measured from the
-piercing point — the intersection of the central ray with the detector plane —
+piercing point, the intersection of the central ray with the detector plane,
 rather than from the detector center. The two coincide only when the detector is
 not offset.
 
@@ -103,7 +116,7 @@ machine rather than assuming the hardware sampler is faster.
 
 Kernel threadgroup shapes are measured rather than derived. `mlx_tomo/tuning.py`
 holds the shipped defaults, selected on an Apple M1, and reads
-`mlx_tomo/tuning_local.json` if present — written by `harness/tune.py` — or a
+`mlx_tomo/tuning_local.json` if present, written by `harness/tune.py`, or a
 path given in `MLX_TOMO_TUNING`. See [performance.md](performance.md).
 
 ## Reference implementation
@@ -134,8 +147,8 @@ recovered attenuation degrades smoothly with cone angle.
 ### Ramp filter construction
 
 The band-limited ramp is built in the **spatial** domain following Kak and
-Slaney — `h[0] = 1/4` and `h[n] = -1/(pi n)²` for odd `n` at unit spacing, with
-detector spacing entering through a `1/dU` factor in the scale — and taken to
+Slaney, `h[0] = 1/4` and `h[n] = -1/(pi n)²` for odd `n` at unit spacing, with
+detector spacing entering through a `1/dU` factor in the scale, and taken to
 the frequency domain as `|FFT(h)| * 2`. The magnitude removes the linear phase
 of the uncentered kernel, and the factor of two composes with the `1/4` in the
 scale to give the Feldkamp `1/2`. Constructing the ramp this way gives the
@@ -196,8 +209,8 @@ weighting unless `parker` is passed explicitly.
 When coverage is below `2*pi` a warning is emitted and weights are applied.
 
 A second guard covers inadequate coverage. Parker weighting requires at least
-`pi` plus the **full** detector fan angle — in the code, `pi + 2*delta`, where
-`delta` is half the detector's angular width. Below that a further warning is
+`pi` plus the **full** detector fan angle (`pi + 2*delta` in the code, where
+`delta` is half the detector's angular width). Below that a further warning is
 emitted, but **the weights are still computed and applied**: the internal
 `epsilon` term clamps to zero and the weighting proceeds. The warning is
 therefore not a refusal. Such data are genuinely limited-angle, the redundancy

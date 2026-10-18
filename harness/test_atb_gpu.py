@@ -1,7 +1,7 @@
 """GPU backprojector vs float64 reference, plus adjoint pairing checks.
 
 The matched backprojector is TIGRE's voxel-driven approximate adjoint of
-the interpolated forward projector — the discretizations differ, so the
+the interpolated forward projector. The discretizations differ, so the
 inner-product identity <Ax, y> = <x, Atb y> holds to ~1%, not machine
 precision. GPU-vs-reference parity is the tight gate (float32 floor).
 """

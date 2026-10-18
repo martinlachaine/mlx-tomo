@@ -26,12 +26,12 @@ development.
 | `geometry`, `geometry_default`, `Geometry`, `ParallelGeo` | supported |
 | Cone and parallel modes | supported |
 | Per-angle `DSD`, `DSO`, `COR`, `offOrigin`, `offDetector`, `rotDetector` | supported |
-| `Ax` — `interpolated`, `Siddon` | supported |
-| `Atb` — `FDK`, `matched` (legacy `krylov=` alias honored) | supported |
+| `Ax`: `interpolated`, `Siddon` | supported |
+| `Atb`: `FDK`, `matched` (legacy `krylov=` alias honored) | supported |
 | `FDK`, `FBP`, `filtering` | supported |
 | Euler `ZYZ` angle triples | supported |
 | `gpuids` | accepted, ignored, and warned about (single Apple GPU) |
-| Iterative solvers (SART, OS-SART, CGLS, ASD-POCS, …) | not implemented — out of scope |
+| Iterative solvers (SART, OS-SART, CGLS, ASD-POCS, …) | out of scope |
 | Half-fan offset-detector reconstruction (`dowang`) | not implemented |
 | Multi-GPU execution | not supported |
 
@@ -52,8 +52,8 @@ relying on the other behavior.
 | `FDK(filter=None)` | Honors a pre-set `geo.filter` | Lets the geometry object carry the filter choice. Pass `filter=` explicitly to override. |
 | `filtering` | Does not mutate its input | Pure function. Code relying on in-place modification must take the return value. |
 | `Atb` distance weights | Frame convention verified against the float64 reference and the analytic oracle; `COR` is excluded from the weight | The weight is a distance ratio, and center-of-rotation offset does not enter it. Full scans are unaffected; on Parker-weighted short scans the difference reaches approximately ±6% in soft-tissue shading. |
-| Nonuniform angular sampling | The per-view scale uses the *mean* rotation step | Uniformly sampled scans, full or short, are handled correctly. Materially nonuniform angles are averaged rather than weighted per view, so clustered views are under-weighted relative to sparse regions; scale each view by its own share of the arc before filtering — see [implementation.md](implementation.md) for the exact operation. |
-| Automatic Parker weighting | Requires a strictly monotonic arc in the first Euler angle with the other two constant; warns when applied | Other trajectories receive no weighting unless `parker` is passed explicitly, because Parker weighting is undefined for them. A second warning is emitted when coverage falls below pi plus the full detector fan angle, the minimum for a valid short scan — note that weights are still applied in that case, so the warning reports insufficient data rather than declining to weight. |
+| Nonuniform angular sampling | The per-view scale uses the *mean* rotation step | Uniformly sampled scans, full or short, are handled correctly. Materially nonuniform angles are averaged rather than weighted per view, so clustered views are under-weighted relative to sparse regions; scale each view by its own share of the arc before filtering, see [implementation.md](implementation.md) for the exact operation. |
+| Automatic Parker weighting | Requires a strictly monotonic arc in the first Euler angle with the other two constant; warns when applied | Other trajectories receive no weighting unless `parker` is passed explicitly, because Parker weighting is undefined for them. A second warning is emitted when coverage falls below pi plus the full detector fan angle, the minimum for a valid short scan, note that weights are still applied in that case, so the warning reports insufficient data rather than declining to weight. |
 | Large arrays | Projection stacks split along the view axis; volumes split into z-slabs | A single Metal dispatch is int32-indexed, so volumes beyond 2^31-1 elements are dispatched as multiple slabs. `Ax` slab contributions sum; `Atb` slabs are independent output tiles. Transparent to the caller. |
 
 ## Known limitations

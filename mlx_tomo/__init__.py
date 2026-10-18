@@ -8,7 +8,7 @@ where behavior differs.
 
 from .geometry import Geometry, ParallelGeo, geometry, geometry_default
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Geometry", "ParallelGeo", "geometry", "geometry_default",

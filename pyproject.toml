@@ -1,6 +1,6 @@
 [project]
 name = "mlx-tomo"
-version = "0.1.0"
+version = "0.2.0"
 description = "Parallel-, fan- and cone-beam X-ray projection and backprojection on Apple GPUs via Metal/MLX, with a TIGRE-compatible Python interface for supported operations"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,7 +23,7 @@ classifiers = [
 dependencies = [
     # mlx pinned: the custom Metal kernels are validated against this version.
     # Re-validate harness/run_tests.py before bumping.
-    "mlx==0.32.0",
+    "mlx==0.32.4",
     "numpy>=2.0",
 ]
 

@@ -22,7 +22,7 @@ include:
 - what you expected versus what happened.
 
 Accuracy reports are most useful as a relative-L2 error against a stated
-reference — the float64 implementation in `mlx_tomo/ref.py`, an analytic
+reference, the float64 implementation in `mlx_tomo/ref.py`, an analytic
 phantom, or TIGRE itself. See `harness/` for the patterns used in the suite.
 
 ## Development setup
@@ -50,7 +50,7 @@ New kernel code is expected to come with: a float64 reference path in
 `mlx_tomo/ref.py`, an analytic or adjoint oracle, and a GPU-vs-reference test
 at the documented float32 tolerance.
 
-The `mlx` dependency is pinned (`mlx==0.32.0`) because the custom Metal kernels
+The `mlx` dependency is pinned (`mlx==0.32.4`) because the custom Metal kernels
 are validated against it. If you need to bump it, re-validate the full suite
 first and say so in the PR.
 

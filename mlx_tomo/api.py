@@ -27,7 +27,7 @@ def Ax(img, geo, angles, projection_type="Siddon", return_np=None,
         mirrors the input type.
     backend: 'buffer' (default; exact float32 trilinear/Siddon via MLX
         kernels) or 'texture' (hardware sampler, interpolated only,
-        ~1e-4 measured accuracy, volume upload per call — prefer
+        ~1e-4 measured accuracy, volume upload per call. Prefer
         TextureProjector for repeated projections of one volume).
 
     Returns (n, nV, nU) float32 line integrals in mm units.

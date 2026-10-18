@@ -7,7 +7,7 @@ harness/test_slabs.py and was first run on an M5 Max, 128 GB.
 Layers of evidence, mirroring the repo's validation doctrine:
 
 1. 1024^3 (fits a single dispatch): slab-forced vs natural single-dispatch
-   at the float32 floor — the only size where slab-vs-unsplit can be compared
+   at the float32 floor, the only size where slab-vs-unsplit can be compared
    directly at scale.
 2. 2048^3 (8.59e9 elements > 2^31-1, real slab path, 5 slabs of 511):
    - cut-position invariance: natural 511-layer slabs vs forced 400-layer
@@ -90,7 +90,7 @@ def big_geo(nvox, ndet=None, accuracy=0.5):
 
 def rasterize_phantom(geo, out_dtype=np.float32, chunk=64):
     """Slab-wise ellipsoid rasterization (gen.ellipsoid_phantom would
-    build full-volume float64 meshgrids — 8x the memory)."""
+    build full-volume float64 meshgrids, 8x the memory)."""
     ells = default_phantom_mm(geo)
     nz, ny, nx = (int(k) for k in geo.nVoxel)
     dz, dy, dx = geo.dVoxel
@@ -121,7 +121,7 @@ def check_1024_slab_vs_unsplit():
     # Siddon tolerance: each slab re-enters the DDA with a fresh
     # ray-parameter division where the unsplit kernel arrives via ~nz
     # accumulated `azn += daz` roundings, so the two cut cells' segment
-    # lengths differ by ~nz*ulp — seam noise that grows with volume size
+    # lengths differ by ~nz*ulp, seam noise that grows with volume size
     # (measured 3e-5 at 1024^3, vs ~7e-6 at 64^3). A genuine counting bug
     # (dropped/doubled cell on cut-crossing rays) would sit near 1e-3.
     for ptype, tol in (("interpolated", 1e-6), ("Siddon", 1e-4)):
@@ -188,7 +188,7 @@ def check_2048_forward():
     # Impulses on the natural cut layers (z = 511k), each validated
     # against an INDEPENDENT unsplit reference: a 64-layer sub-volume
     # holding the same impulse, offOrigin-shifted so its voxels occupy
-    # the same world positions — one legal single dispatch, no cut
+    # the same world positions, one legal single dispatch, no cut
     # planes. A dropped or double-counted tap at the cut would show up
     # as ~0.5x/2x here; agreement is at the float32 floor.
     nz, ny, nx = (int(k) for k in geo.nVoxel)

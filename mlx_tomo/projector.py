@@ -3,7 +3,7 @@
 Design notes
 ------------
 - Per-view ray geometry (uvOrigin, deltaU, deltaV, source) is computed on
-  the host in float64 (mlx_tomo.ref.view_geometry — the validated TIGRE
+  the host in float64 (mlx_tomo.ref.view_geometry, the validated TIGRE
   port) and uploaded as a small float32 buffer: 16 floats per view. The
   GPU pipeline itself is float32 throughout, like TIGRE's.
 - Thread mapping is (u, v, view) with u fastest: adjacent SIMD lanes write
@@ -28,11 +28,11 @@ Slab splitting (volumes > 2^31-1 elements)
 Forward: Ax is linear in the volume, and both samplers have border-zero
 semantics, so Ax(vol) == sum_k Ax(slab_k zero-padded). Each slab kernel
 runs in global voxel coordinates (the per-view ray setup is bitwise
-identical to the unsplit kernel — same S, P, step count, sample
+identical to the unsplit kernel, same S, P, step count, sample
 positions) with the z clip window narrowed from (-1, nz) to
 (z0-1, z0+snz) and buffer indices offset by the integer z0. A trilinear
 tap (or Siddon cell) in layer j is fetched only by the slab that owns j,
-so every tap/cell is counted exactly once by integer comparisons — no
+so every tap/cell is counted exactly once by integer comparisons, no
 halo layers and no floating-point ownership decisions at the cut plane.
 A sample whose support straddles the cut is visited by both neighboring
 slabs, each contributing only its own layers' taps; the two partial
@@ -69,7 +69,7 @@ using namespace metal;
 
 def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
     # nz is the slab's layer count; z0 its global offset (0, nz_total when
-    # unsplit). All geometry runs in global voxel coordinates — only the
+    # unsplit). All geometry runs in global voxel coordinates, only the
     # z clip window and the buffer index change with (z0, nz).
     nxy = nx * ny
     par_s = "S += fu * dU + fv * dV;" if parallel else ""
@@ -88,6 +88,19 @@ def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
         f"sum += wz * wy * wx * {ld}((uint)(jz - {z_lo}) * {ny}u + (uint)jy) * {nx}u + (uint)jx]; "
         f"}} }} }} }}"
     )
+    # Consecutive samples half a voxel apart often stay in one cell, so the
+    # cell's eight corners are kept in registers and reloaded only when the
+    # base index changes; identical sums to loading them every sample.
+    interior = f"""if (base != pbase) {{
+            pbase = base;
+            c000 = {ld}base];               c100 = {ld}base + 1u];
+            c010 = {ld}base + {nx}u];       c110 = {ld}base + {nx + 1}u];
+            c001 = {ld}base + {nxy}u];      c101 = {ld}base + {nxy + 1}u];
+            c011 = {ld}base + {nxy + nx}u]; c111 = {ld}base + {nxy + nx + 1}u];
+        }}
+        float c00 = mix(c000, c100, fr.x), c10 = mix(c010, c110, fr.x);
+        float c01 = mix(c001, c101, fr.x), c11 = mix(c011, c111, fr.x);
+        sum += mix(mix(c00, c10, fr.y), mix(c01, c11, fr.y), fr.z);"""
     return f"""
 {border}
     uint u = thread_position_in_grid.x;
@@ -110,10 +123,10 @@ def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
 
     // Clip sampling to the trilinear support box of the slab's own
     // layers: (-1, N) in x/y, (z0-1, z0+nz) in z (== (-1, N) unsplit).
-    // Degenerate axes (|vect| < 1e-9) cannot use the slope form — a
+    // Degenerate axes (|vect| < 1e-9) cannot use the slope form. A
     // signed pseudo-slope reads as a fictitious drift and prematurely
     // clips rays hugging a face (or an interior cut plane) from inside,
-    // dropping their low-weight taps — so membership of S in the open
+    // dropping their low-weight taps, so membership of S in the open
     // support interval decides instead.
     float3 va = float3(abs(vect.x) < 1e-9f ? 1e-9f : vect.x,
                        abs(vect.y) < 1e-9f ? 1e-9f : vect.y,
@@ -139,8 +152,8 @@ def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
     // guards needed. Boundary-straddling samples run the guarded path.
     // The upper bound is strict (ceil - 1): a sample exactly on it has a
     // weight-0 far tap one plane outside the slab buffer, which must not
-    // be fetched. This window is a performance hint only — the fast path
-    // verifies its footprint per sample — so degenerate axes need no
+    // be fetched. This window is a performance hint only. The fast path
+    // verifies its footprint per sample, so degenerate axes need no
     // special handling here.
     float3 q0 = (float3(0.0f, 0.0f, {z_lo}.0f) - S) * inv;
     float3 q1 = (float3({nx - 1}.0f, {ny - 1}.0f, {z_hi - 1}.0f) - S) * inv;
@@ -151,6 +164,8 @@ def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
     if (j0 > j1) {{ j0 = i1 + 1; j1 = i1; }}  // no interior: all guarded
 
     float sum = 0.0f;
+    uint pbase = 0xffffffffu;
+    float c000 = 0.0f, c100 = 0.0f, c010 = 0.0f, c110 = 0.0f, c001 = 0.0f, c101 = 0.0f, c011 = 0.0f, c111 = 0.0f;
     // guarded boundary samples before the interior
     for (int i = i0; i < j0; ++i) {{
         BORDER_SAMPLE(i)
@@ -158,8 +173,8 @@ def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
     // interior fast path: all 8 taps in-slab. The [j0, j1] window comes
     // from float32 plane crossings while t is evaluated as S + vect*i, so a
     // sample can sit an ulp outside the window's promise; verify the
-    // footprint and send the (measure-zero) misses to the guarded path —
-    // an unchecked floor one short would wrap the uint index far out of
+    // footprint and send the (measure-zero) misses to the guarded path.
+    // An unchecked floor one short would wrap the uint index far out of
     // the buffer.
     for (int i = j0; i <= j1; ++i) {{
         float3 t = S + vect * (float)i;
@@ -172,11 +187,7 @@ def _interp_source(nx, ny, nz, nu, nv, acc, dlx, dly, dlz, parallel, half, z0):
         }}
         float3 fr = t - f;
         uint base = ((uint)jz * {ny}u + (uint)jy) * {nx}u + (uint)jx;
-        float c00 = mix({ld}base],                {ld}base + 1u],                fr.x);
-        float c10 = mix({ld}base + {nx}u],        {ld}base + {nx + 1}u],         fr.x);
-        float c01 = mix({ld}base + {nxy}u],       {ld}base + {nxy + 1}u],        fr.x);
-        float c11 = mix({ld}base + {nxy + nx}u],  {ld}base + {nxy + nx + 1}u],   fr.x);
-        sum += mix(mix(c00, c10, fr.y), mix(c01, c11, fr.y), fr.z);
+        {interior}
     }}
     // guarded boundary samples after the interior
     for (int i = max(j1 + 1, j0); i <= i1; ++i) {{
@@ -314,7 +325,7 @@ def ax_gpu(img_mx, geo, ptype, views=None):
     """Forward-project a volume. geo must be validated (check_geo).
 
     img_mx: (nz, ny, nx) float32/float16 mx.array (or numpy array when the
-    volume exceeds the slab threshold — slabs are converted one at a time
+    volume exceeds the slab threshold. Slabs are converted one at a time
     to bound peak memory). Returns (n, nV, nU) mx.array.
 
     views: optional (n, 16) float32 per-view buffer replacing the one
@@ -396,7 +407,7 @@ def _ax_dispatch(img_mx, geo, ptype, z0, views=None):
         output_dtypes=[mx.float32],
         grid=(n_u, n_v, n),
         # Shapes are measured per machine; see mlx_tomo/tuning.py and
-        # https://github.com/martinlachaine/mlx-tomo/blob/main/harness/tune.py (M1: square (8,8) tiles maximize volume-cache
+        # harness/tune.py (M1: square (8,8) tiles maximize volume-cache
         # sharing for trilinear; the Siddon DDA prefers wide (32,4)).
         threadgroup=_clamp_tg(
             tuning.get("ax_interp" if ptype == "interpolated" else "ax_siddon"),
@@ -408,11 +419,17 @@ def _ax_dispatch(img_mx, geo, ptype, z0, views=None):
 # ----------------------------------------------------------------------
 # Backprojection (Atb)
 
-def _atb_source(nx, ny, nz, nu, nv, dvox, svox, ddet, sdet, wmode, z0):
+def _atb_source(nx, ny, nz, nu, nv, dvox, svox, ddet, sdet, wmode, z0,
+                circular=False):
     """Voxel-driven backprojection kernel body.
 
     wmode: 0 = FDK cone weight, 1 = matched cone weight, 2 = parallel
     (weight 1). dvox/svox are (x, y, z) mm; ddet/sdet are (u, v) mm.
+    circular: every view has a single Euler angle and no detector rotation,
+    so the FDK weight's source-to-voxel distance DSO - realx cosA - realy
+    sinA equals S.x - P.x in the view frame and the weight reuses the
+    perspective divide's reciprocal (one division per voxel and view
+    instead of two; 1.6x on the M5 Max).
     nz is the output slab's layer count and z0 its global offset: output
     slabs are independent tiles, so the only slab dependence is the
     global voxel z index fz = zv + z0 (svox stays the full-volume size).
@@ -426,12 +443,17 @@ def _atb_source(nx, ny, nz, nu, nv, dvox, svox, ddet, sdet, wmode, z0):
         float y = P.y, z = P.z;"""
     else:
         uv = """
-        float t = (DSO - DSD - S.x) / (P.x - S.x);
+        float rden = 1.0f / (P.x - S.x);
+        float t = (DSO - DSD - S.x) * rden;
         float y = (P.y - S.y) * t + S.y;
         float z = (P.z - S.z) * t + S.z;"""
-    if wmode == 0:
+    if wmode == 0 and circular:
+        weight = """
+        float wgt = DSO * rden;
+        wgt = wgt * wgt;"""
+    elif wmode == 0:
         # U = source-to-voxel-plane distance for the source at
-        # (DSO cosA, DSO sinA) — the repo's validated CCW convention.
+        # (DSO cosA, DSO sinA), the repo's validated CCW convention.
         # TIGRE's literal CUDA expression (DSO + realy sinA - realx cosA,
         # with COR folded into realy) evaluates U at -A: its wrappers
         # compensate with an axis flip ours does not have. The mirror
@@ -609,19 +631,27 @@ def _atb_dispatch(proj_mx, geo, bptype, z0, snz):
     # determines the full-volume physical size the weight terms bake in,
     # and check_geo's 1e-6 tolerance means sdet is not exactly
     # nDetector * dDetector).
-    key = ("atb", nx, ny, snz, n_u, n_v, dvox, svox, ddet, sdet, wmode, n, z0)
+    circular = bool(np.all(np.asarray(geo.angles)[:, 1:] == 0.0)
+                    and np.all(np.asarray(geo.rotDetector) == 0.0))
+    key = ("atb", nx, ny, snz, n_u, n_v, dvox, svox, ddet, sdet, wmode, n, z0,
+           circular)
     kern = _KERNEL_CACHE.get(key)
     if kern is None:
         src = ("#define NVIEWS " + str(n) + "u\n"
                + _atb_source(nx, ny, snz, n_u, n_v, dvox, svox, ddet, sdet,
-                             wmode, z0))
+                             wmode, z0, circular))
         suffix = f"_s{z0}" if z0 else ""
+        # Relaxed math lets the perspective divide and the weight's division
+        # and square root use the fast forms: 10% on FDK and 23% on matched
+        # (M5 Max), within 1e-7 of the safe build. The projectors gain
+        # nothing from it and keep exact floor and clipping arithmetic.
         kern = mx.fast.metal_kernel(
             name=f"atb_{wmode}_{nx}x{ny}x{snz}_{n_u}x{n_v}_n{n}{suffix}",
             input_names=["proj", "views"],
             output_names=["img"],
             header=_HDR,
             source=src,
+            compile_options={"math_mode": "relaxed"},
         )
         _KERNEL_CACHE[key] = kern
     views = mx.array(build_bp_view_params(geo))

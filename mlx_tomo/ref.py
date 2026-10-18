@@ -11,7 +11,7 @@ and evaluates the same sampling rules in float64:
 - ``Siddon``: exact cell-constant radiological path (Jacobs/Siddon),
   voxel-corner convention (cell ``j`` spans ``[j, j+1)``).
 
-offDetector is applied once, in all modes. See https://github.com/martinlachaine/mlx-tomo/blob/main/docs/compatibility.md for the
+offDetector is applied once, in all modes. See docs/compatibility.md for the
 behavioral differences from TIGRE.
 
 This implementation prioritizes clarity and numerical traceability over
@@ -408,7 +408,7 @@ def atb_ref(proj, geo, angles, backprojection_type="FDK"):
             w = 1.0
         elif backprojection_type == "FDK":
             # U for the source at (DSO cosA, DSO sinA); see the frame
-            # note in projector._atb_source — TIGRE's literal kernel
+            # note in projector._atb_source, TIGRE's literal kernel
             # expression evaluates U at -A and folds COR into realy,
             # which cancels on full scans but shades short scans.
             sa, ca = np.sin(geo.angles[i][0]), np.cos(geo.angles[i][0])

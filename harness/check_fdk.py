@@ -10,7 +10,7 @@ Sections:
    wall-clock breakdown (weight+filter vs backprojection).
 2. Off-plane error budget: uniform tall ellipsoid spanning ~7 deg of
    half-cone angle; per-z interior recovered mu. FDK is exact in the
-   central plane and degrades smoothly with cone angle — this table IS
+   central plane and degrades smoothly with cone angle. This table is
    the baseline's error budget, not a bug to fix.
 3. Multi-ellipsoid phantom (contrast steps): central profiles and
    per-region means vs the exact rasterized ground truth.

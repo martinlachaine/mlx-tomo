@@ -52,7 +52,7 @@ def rasterize(geo, ells, supersample=2, chunk=32):
     """Rasterize rotated ellipsoids into (nz, ny, nx) float32.
 
     supersample: linear subdivision per axis (2 -> 8 subsamples/voxel),
-    giving partial-volume edges — a fairer ground truth for comparing
+    giving partial-volume edges, a fairer ground truth for comparing
     band-limited reconstructions than binary voxel-center assignment.
     """
     nz, ny, nx = (int(k) for k in geo.nVoxel)

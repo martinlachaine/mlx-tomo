@@ -2,14 +2,14 @@
 
 The oracle (gen.analytic_projection) produces EXACT line integrals of
 ellipsoid phantoms, so recovered attenuation is compared to known
-ground truth — the property that matters for a research comparator.
+ground truth, the property that matters for a research comparator.
 
 Strategy (decoupled):
 1. Parallel FBP first: Radon inversion is exact, so interior recovery
-   must be near-perfect (measured 3e-4 relative at these sizes) — any
-   miss is a filter/padding/scale bug, gated tightly.
+   must be near-perfect (measured 3e-4 relative at these sizes). Any
+   miss is a filter, padding or scale bug and is gated tightly.
 2. Cone FDK: exact in the central plane of a circular orbit; gated
-   tightly there. Off-plane FDK error grows with cone angle — the
+   tightly there. Off-plane FDK error grows with cone angle. The
    at-scale error budget lives in harness/check_fdk.py; here the small
    test cone (<2 deg) must stay sub-percent.
 
@@ -184,7 +184,7 @@ def test_fdk_short_scan_parker():
           f"ratio={r_short/MU:.4f}")
     # POINTWISE gate: the mirrored Atb distance weight shaded short
     # scans antisymmetrically by +-6% while every mean-based gate read
-    # 1.00 — means must never be the only gate on short scans.
+    # 1.00. Means must never be the only gate on short scans.
     pmax = np.abs(short[32][inner] - MU).max() / MU
     check("short scan pointwise interior", pmax < 0.02,
           f"max|err|/mu={pmax:.4f}")
@@ -199,7 +199,7 @@ def test_fdk_short_scan_parker():
 
     # weight properties: range, boundary taper, smoothness. The Wesarg
     # transitions are steep (width ~ q*(2*delta - 2*alpha + epsilon)),
-    # so gate CONVERGENCE under view refinement — a sign/indexing bug
+    # so gate CONVERGENCE under view refinement. A sign or indexing bug
     # gives hard 0<->1 jumps that do not shrink with denser sampling.
     g = geo.copy()
     g.check_geo(angles_s)
@@ -247,7 +247,7 @@ def test_filtering_function():
 
     # frequency response (rfft half-spectrum, length flen//2+1; Nyquist
     # gain 1.0). The spatial-kernel route's signature: DC is small but
-    # strictly POSITIVE, ~4/(pi^2*flen) from kernel truncation — the
+    # strictly POSITIVE, ~4/(pi^2*flen) from kernel truncation. It is the
     # term a naive |omega| filter loses (causing cupping).
     flen = 1024
     f = ramp_filter("ram_lak", flen)
@@ -385,7 +385,7 @@ def test_trajectory_cor_and_anisotropy():
 
 def test_cosine_weight_matches_oracle_rays():
     """The FDK pre-weight DSD/sqrt(DSD^2+u^2+v^2) must equal cos(gamma)
-    of the actual source->pixel ray bundle from the analytic oracle —
+    of the actual source->pixel ray bundle from the analytic oracle,
     pins the (v,u) field ordering, the offDetector sign, the
     piercing-point convention, and that COR (which shifts source and
     detector together) does not enter."""

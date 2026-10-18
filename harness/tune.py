@@ -3,8 +3,8 @@
 Measures device memory bandwidth, sweeps threadgroup shapes for every
 kernel on a representative workload, prints the table, and writes the
 winners to mlx_tomo/tuning_local.json (loaded automatically; delete the
-file to fall back to shipped defaults). Run this once per machine —
-e.g. after moving from M1 to M5 Max.
+file to fall back to shipped defaults). Run this once per machine,
+for example after moving from M1 to M5 Max.
 
 Usage: python harness/tune.py [--nvox 512] [--ndet 512] [--views 10]
        [--dry]   (dry: print winners, don't write the file)

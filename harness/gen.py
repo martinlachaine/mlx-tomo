@@ -1,7 +1,7 @@
 """Problem generators and independent analytic oracle.
 
 The analytic projector here derives detector/source positions directly from
-the documented TIGRE convention — it shares no code with mlx_tomo.ref (which
+the documented TIGRE convention and shares no code with mlx_tomo.ref (which
 ports TIGRE's computeDeltas). Agreement between the two validates the port.
 
 World frame (mm): at angles=(0,0,0) the source is at (DSO, 0, 0), detector

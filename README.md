@@ -36,7 +36,7 @@ pip install mlx-tomo
 Or install a tagged release from GitHub:
 
 ```bash
-pip install "git+https://github.com/martinlachaine/mlx-tomo.git@v0.1.0"
+pip install "git+https://github.com/martinlachaine/mlx-tomo.git@v0.2.0"
 ```
 
 `mlx` is pinned to a validated version; `numpy` has a lower bound. Check the
@@ -99,7 +99,7 @@ and where behavior differs.
 
 ## Limitations
 
-- **Iterative and learned reconstruction are not included** — the package
+- **Iterative and learned reconstruction are not included**: the package
   provides the operators these methods are built from.
 - **`Atb(backprojection_type="matched")` is an approximate adjoint.** Ray-driven
   forward projection and voxel-driven backprojection are not exact transposes.
@@ -130,13 +130,13 @@ Full detail and how to run everything: [docs/validation.md](https://github.com/m
 ## Performance
 
 Milliseconds per view, median of nine timed repetitions after a warm-up, on an
-Apple M5 Max (40-core GPU, 128 GB, macOS 27.0, Python 3.14.7, MLX 0.32.0,
+Apple M5 Max (40-core GPU, 128 GB, macOS 27.0.1, Python 3.14.7, MLX 0.32.4,
 mains power, no thermal or performance warnings):
 
 | problem | views | interpolated | Siddon | Atb (FDK) |
 |---|---|---|---|---|
-| 256³ ↔ 256² | 100 | 0.26 | 0.14 | 0.23 |
-| 512³ ↔ 512² | 100 | 1.90 | 0.90 | 1.61 |
+| 256³ ↔ 256² | 100 | 0.20 | 0.14 | 0.14 |
+| 512³ ↔ 512² | 100 | 1.49 | 0.90 | 0.92 |
 
 Observed scaling across machines is consistent with bandwidth-bound execution.
 Kernel launch parameters are measured per device; run `harness/tune.py` on your
@@ -147,22 +147,15 @@ and tuning guidance: [docs/performance.md](https://github.com/martinlachaine/mlx
 
 ## Documentation
 
-- [docs/compatibility.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/compatibility.md) — supported API, and behavioral
+- [docs/compatibility.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/compatibility.md): supported API, and behavioral
   differences from TIGRE
-- [docs/validation.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/validation.md) — how correctness is established, how
+- [docs/validation.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/validation.md): how correctness is established, how
   to run the suite, adjoint consistency
-- [docs/performance.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/performance.md) — benchmark methodology and results
-- [docs/implementation.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/implementation.md) — precision model, kernels,
+- [docs/performance.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/performance.md): benchmark methodology and results
+- [docs/implementation.md](https://github.com/martinlachaine/mlx-tomo/blob/main/docs/implementation.md): precision model, kernels,
   array splitting, tuning
-- [CONTRIBUTING.md](https://github.com/martinlachaine/mlx-tomo/blob/main/CONTRIBUTING.md) — bug reports and development setup
-- [CHANGELOG.md](https://github.com/martinlachaine/mlx-tomo/blob/main/CHANGELOG.md) — release history
-
-## Development and validation
-
-Generative AI tools assisted with implementation, refactoring, test scaffolding,
-and documentation. The author defined the project's scope and numerical
-requirements, reviewed the implementation, and is responsible for validation and
-releases.
+- [CONTRIBUTING.md](https://github.com/martinlachaine/mlx-tomo/blob/main/CONTRIBUTING.md): bug reports and development setup
+- [CHANGELOG.md](https://github.com/martinlachaine/mlx-tomo/blob/main/CHANGELOG.md): release history
 
 ## License and citation
 

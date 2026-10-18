@@ -4,17 +4,17 @@
 
 Three complementary layers, all in `harness/`:
 
-1. **Float64 reference implementation** — `mlx_tomo/ref.py` computes the same
+1. **Float64 reference implementation**: `mlx_tomo/ref.py` computes the same
    projections in double precision with NumPy. The GPU kernels are required to
    agree with it to approximately 1e-5 relative L2 in the tested
    configurations. This is an independent implementation, but it deliberately
    shares the same mathematical model, so it bounds arithmetic and kernel error
-   rather than modeling error — which is what layers 2 and 3 address.
-2. **Analytic oracle** — exact ellipsoid line integrals derived directly from
+   rather than modeling error, which is what layers 2 and 3 address.
+2. **Analytic oracle**: exact ellipsoid line integrals derived directly from
    the documented geometry convention. This shares no code with the reference
    implementation, so a shared misunderstanding of the geometry would not pass
    both.
-3. **Impulse placement** — single-voxel volumes must project onto the
+3. **Impulse placement**: single-voxel volumes must project onto the
    analytically predicted detector pixel, across projection modes, angles, and
    detector and origin offsets.
 
@@ -69,7 +69,7 @@ chosen to be closer to the adjoint than the FDK weight, but it remains an
 approximation.
 
 Measured on a 128³ volume with a 666² detector over 180 views, cone geometry
-with DSO 1000 mm and DSD 1500 mm, using `mlx==0.32.0` on an Apple M5 Max:
+with DSO 1000 mm and DSD 1500 mm, using `mlx==0.32.4` on an Apple M5 Max:
 
 ```
 |<Ax x, y> - <x, Atb y>| / (||Ax x|| ||y||)  =  1.8e-4   (random x, y)
@@ -80,8 +80,8 @@ In the geometries tested here this discrepancy did not materially affect FDK,
 FBP or DRR results. Iterative methods can be more sensitive to adjoint
 inconsistency, so if you build a Krylov solver or an unrolled network on the
 normal equations, evaluate adjoint consistency and convergence for your own
-geometry before relying on it. An exactly matched pair — a scatter-based
-transpose of the trilinear weights — is not implemented.
+geometry before relying on it. An exactly matched pair, a scatter-based
+transpose of the trilinear weights, is not implemented.
 
 ### Measuring it yourself
 

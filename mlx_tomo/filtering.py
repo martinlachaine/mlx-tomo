@@ -9,8 +9,8 @@ input. The cone-beam cosine pre-weight is not applied here; it lives in ``FDK``.
 Available windows: ``shepp_logan``, ``cosine``, ``hamming``, ``hann``, plus a
 cutoff parameter in (0, 1] that zeroes frequencies above pi * d.
 
-See https://github.com/martinlachaine/mlx-tomo/blob/main/docs/implementation.md for the ramp construction, padding and scaling
-conventions, and https://github.com/martinlachaine/mlx-tomo/blob/main/docs/compatibility.md for behavioral differences.
+See docs/implementation.md for the ramp construction, padding and scaling
+conventions, and docs/compatibility.md for behavioral differences.
 """
 
 from __future__ import annotations
@@ -190,7 +190,7 @@ def _filter_core(proj_mx, geo, parker_q, d, name):
     # /4 here to the Feldkamp 1/2):
     # - parallel: TIGRE's literal (2*pi/n)/(4*dU). Per view this is
     #   pi/n x ramp, which self-normalizes for BOTH pi- and 2*pi-range
-    #   scans (line space has measure pi; uniform coverage assumed) —
+    #   scans (line space has measure pi; uniform coverage assumed),
     #   verified exact against the analytic oracle for both.
     # - cone: measured mean step / (4*dU); equals TIGRE for standard
     #   full scans (step = 2*pi/n) and stays correct for short scans,
